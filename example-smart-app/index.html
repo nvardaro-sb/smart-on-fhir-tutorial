@@ -3,7 +3,7 @@
   <head>
     <meta http-equiv='X-UA-Compatible' content='IE=edge' />
     <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
-    <title>Example-SMART-App</title>
+    <title>Nick's Example-SMART-App</title>
 
     <link rel='stylesheet' type='text/css' href='./src/css/example-smart-app.css'>
     <!--
@@ -73,87 +73,29 @@
       <script src='./lib/js/cerner-smart-embeddable-lib-1.0.0.min.js'></script>
     -->
 
-    <!-- Modern FHIR Client JS Library (LOCAL) -->
-    <script src='./lib/js/fhirclient-modern.js'></script>
-    
     <!-- Application-level javascript-->
     <script src='./src/js/example-smart-app.js'></script>
+
+    <!-- FHIR Client JS Library -->
+    <script src='./lib/js/fhir-client-v0.1.12.js'></script>
+
+    <!-- Prevent session bleed caused by single threaded embedded browser and sessionStorage API -->
+    <!-- https://github.com/cerner/fhir-client-cerner-additions -->
+    <script src='./lib/js/fhir-client-cerner-additions-1.0.0.js'></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <script>
-      // Modern async/await approach
-      async function initApp() {
-        console.log('📱 Modern SMART app starting...');
-        console.log('🌐 Current URL:', window.location.href);
-        console.log('📍 URL Parameters:', Object.fromEntries(new URLSearchParams(window.location.search)));
-        
-        try {
-          const data = await extractData();
-          console.log('✅ Data extraction successful');
-          drawVisualization(data);
-        } catch (error) {
-          console.error('❌ Data extraction failed:', error);
-          showError(error.message || 'Unknown error occurred');
+      extractData().then(
+        //Display Patient Demographics and Observations if extractData was success
+        function(p) {
+          drawVisualization(p);
+        },
+
+        //Display 'Failed to call FHIR Service' if extractData failed
+        function() {
+          $('#loading').hide();
+          $('#errors').html('<p> Failed to call FHIR Service </p>');
         }
-      }
-      
-      function showError(message) {
-        $('#loading').hide();
-        
-        let errorHtml = '<div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px; color: #721c24;">';
-        errorHtml += '<h3 style="margin-top: 0;">❌ FHIR Service Error</h3>';
-        errorHtml += '<p><strong>Error:</strong> ' + message + '</p>';
-        errorHtml += '<p><strong>This is using the modern FHIR client with local library.</strong></p>';
-        errorHtml += '<p><strong>Possible solutions:</strong></p>';
-        errorHtml += '<ul>';
-        errorHtml += '<li>Check if your OAuth2 flow completed successfully</li>';
-        errorHtml += '<li>Verify your client credentials are still valid</li>';
-        errorHtml += '<li>Ensure you have the required scopes (patient/Patient.read patient/Observation.read)</li>';
-        errorHtml += '<li>Check if the FHIR server is accessible</li>';
-        errorHtml += '</ul>';
-        errorHtml += '<p><strong>Debug info:</strong></p>';
-        errorHtml += '<ul>';
-        errorHtml += '<li>URL: ' + window.location.href + '</li>';
-        errorHtml += '<li>FHIR Client: ' + (typeof window.FHIR !== 'undefined' ? 'Modern v2.5.3 (Local)' : 'Not loaded') + '</li>';
-        errorHtml += '<li>Timestamp: ' + new Date().toISOString() + '</li>';
-        errorHtml += '</ul>';
-        errorHtml += '<p><em>Check browser console for detailed logs</em></p>';
-        errorHtml += '<p><strong>Next steps:</strong></p>';
-        errorHtml += '<ul>';
-        errorHtml += '<li><a href="test-local-fhir.html" style="color: #007bff;">🧪 Try test page</a> to restart OAuth flow</li>';
-        errorHtml += '<li><a href="standalone.html" style="color: #007bff;">🖥️ Try standalone mode</a></li>';
-        errorHtml += '</ul>';
-        errorHtml += '</div>';
-        
-        $('#errors').html(errorHtml);
-        
-        console.error('=== FHIR App Error Details ===');
-        console.error('Error message:', message);
-        console.error('Current URL:', window.location.href);
-        console.error('URL parameters:', new URLSearchParams(window.location.search));
-        console.error('Hash parameters:', window.location.hash);
-        console.error('Available global objects:', {
-          FHIR: typeof window.FHIR,
-          jQuery: typeof window.jQuery,
-          $: typeof window.$
-        });
-      }
-
-      // Start the app when jQuery is ready
-      $(document).ready(function() {
-        console.log('📚 jQuery ready, starting modern SMART app...');
-        initApp();
-      });
-
-      // Global error handlers
-      window.addEventListener('error', function(event) {
-        console.error('💥 JavaScript error:', event.error);
-        showError('JavaScript error: ' + event.message);
-      });
-
-      window.addEventListener('unhandledrejection', function(event) {
-        console.error('🚫 Unhandled promise rejection:', event.reason);
-        showError('Promise rejection: ' + event.reason);
-      });
+      );
     </script>
   </body>
 </html>
