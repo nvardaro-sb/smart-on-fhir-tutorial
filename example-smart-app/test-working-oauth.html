@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Working OAuth Test</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      .debug-section { background: #f5f5f5; border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px; }
+      .error { background: #ffe6e6; border-color: #ff9999; }
+      .success { background: #e6ffe6; border-color: #99ff99; }
+      .info { background: #e6f3ff; border-color: #99ccff; }
+      .warning { background: #fff3cd; border-color: #ffc107; }
+      pre { background: white; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; }
+      button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+      button:hover { background: #0056b3; }
+    </style>
+  </head>
+  <body>
+    <h1>Working OAuth Test</h1>
+    <p>This tests OAuth with known-working configurations</p>
+    
+    <div id="status" class="debug-section info">
+      <h3>Status</h3>
+      <p>Ready to test OAuth configurations...</p>
+    </div>
+
+    <div class="debug-section">
+      <h3>Test OAuth Configurations</h3>
+      <p>Click a button to test different OAuth configurations:</p>
+      <button onclick="testSmartHealthIT()">Test SMART Health IT Sandbox</button>
+      <button onclick="testCernerSandbox()">Test Cerner Sandbox (Original)</button>
+      <button onclick="testLogicaHealth()">Test Logica Health Sandbox</button>
+    </div>
+
+    <div class="debug-section">
+      <h3>Configuration Details</h3>
+      <div id="config-details"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>Debug Log</h3>
+      <div id="debug-log"></div>
+    </div>
+
+    <script src='./lib/js/fhir-client-v0.1.12.js'></script>
+    <script src='./lib/js/fhir-client-cerner-additions-1.0.0.js'></script>
+    <script>
+      function updateStatus(message, type) {
+        const statusDiv = document.getElementById('status');
+        statusDiv.className = 'debug-section ' + type;
+        statusDiv.innerHTML = '<h3>Status</h3><p>' + message + '</p>';
+      }
+
+      function addDebugLog(message, data) {
+        const debugLog = document.getElementById('debug-log');
+        const logEntry = document.createElement('div');
+        logEntry.style.margin = '5px 0';
+        logEntry.style.padding = '5px';
+        logEntry.style.fontSize = '12px';
+        logEntry.style.fontFamily = 'monospace';
+        logEntry.style.backgroundColor = 'white';
+        logEntry.style.border = '1px solid #ddd';
+        
+        let content = new Date().toISOString() + ' - ' + message;
+        if (data) {
+          content += '\n' + JSON.stringify(data, null, 2);
+        }
+        logEntry.innerHTML = '<pre>' + content + '</pre>';
+        debugLog.appendChild(logEntry);
+        debugLog.scrollTop = debugLog.scrollHeight;
+      }
+
+      function displayConfig(config, name) {
+        const configDiv = document.getElementById('config-details');
+        configDiv.innerHTML = '<h4>' + name + '</h4><pre>' + JSON.stringify(config, null, 2) + '</pre>';
+      }
+
+      function testSmartHealthIT() {
+        const config = {
+          client_id: 'my_web_app',
+          scope: 'patient/Patient.read patient/Observation.read launch/patient openid profile',
+          redirect_uri: window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/'),
+          iss: 'https://launch.smarthealthit.org/v/r4/sim/eyJoIjoiMSIsImIiOiJzbWFydC03Nzc3NyIsImUiOiJzbWFydC1QcmFjdGl0aW9uZXItNzE2MTQxNDIifQ/fhir'
+        };
+        
+        displayConfig(config, 'SMART Health IT Sandbox');
+        updateStatus('Testing SMART Health IT Sandbox...', 'info');
+        addDebugLog('Starting SMART Health IT OAuth test', config);
+        
+        try {
+          FHIR.oauth2.authorize(config);
+        } catch (error) {
+          updateStatus('Error: ' + error.message, 'error');
+          addDebugLog('OAuth Error', { error: error.message, stack: error.stack });
+        }
+      }
+
+      function testCernerSandbox() {
+        const config = {
+          client_id: 'fc4ee473-1523-46d7-ad22-7b68b3205219',
+          scope: 'patient/Patient.read patient/Observation.read launch/patient openid profile',
+          redirect_uri: 'https://nvardaro-sb.github.io/smart-on-fhir-tutorial/example-smart-app/',
+          iss: 'https://fhir-ehr-code.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d'
+        };
+        
+        displayConfig(config, 'Cerner Sandbox (Original)');
+        updateStatus('Testing Cerner Sandbox (your original config)...', 'info');
+        addDebugLog('Starting Cerner OAuth test', config);
+        
+        try {
+          FHIR.oauth2.authorize(config);
+        } catch (error) {
+          updateStatus('Error: ' + error.message, 'error');
+          addDebugLog('OAuth Error', { error: error.message, stack: error.stack });
+        }
+      }
+
+      function testLogicaHealth() {
+        const config = {
+          client_id: 'client_id_here',
+          scope: 'patient/Patient.read patient/Observation.read launch/patient openid profile',
+          redirect_uri: window.location.href,
+          iss: 'https://api.logicahealth.org/FHIRSandbox/open'
+        };
+        
+        displayConfig(config, 'Logica Health Sandbox');
+        updateStatus('Testing Logica Health Sandbox...', 'info');
+        addDebugLog('Starting Logica Health OAuth test', config);
+        
+        try {
+          FHIR.oauth2.authorize(config);
+        } catch (error) {
+          updateStatus('Error: ' + error.message, 'error');
+          addDebugLog('OAuth Error', { error: error.message, stack: error.stack });
+        }
+      }
+
+      // Log initial state
+      addDebugLog('OAuth Test Page Loaded', {
+        current_url: window.location.href,
+        fhir_available: typeof window.FHIR !== 'undefined',
+        oauth2_available: window.FHIR && typeof window.FHIR.oauth2 !== 'undefined'
+      });
+
+      // Add error handlers
+      window.addEventListener('error', function(event) {
+        addDebugLog('JavaScript Error', {
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno
+        });
+      });
+    </script>
+  </body>
+</html>
