@@ -128,6 +128,8 @@
   window.drawVisualization = function(p) {
     $('#holder').show();
     $('#loading').hide();
+    
+    // Display FHIR patient data
     $('#fname').html(p.fname);
     $('#lname').html(p.lname);
     $('#gender').html(p.gender);
@@ -137,6 +139,70 @@
     $('#diastolicbp').html(p.diastolicbp);
     $('#ldl').html(p.ldl);
     $('#hdl').html(p.hdl);
+    
+    // Initialize Superblocks clinical dashboard
+    initializeSuperblocksDashboard(p);
   };
+  
+  // Simple Superblocks Embed - just get it working first
+  window.initializeSuperblocksDashboard = function(patientData) {
+    console.log('🏥 Initializing Superblocks embed...');
+    
+    // Show the Superblocks section
+    $('#superblocks-section').show();
+    
+    // Check if Superblocks SDK is available
+    if (typeof Superblocks === 'undefined') {
+      console.warn('⚠️ Superblocks SDK not loaded');
+      $('#superblocks-container').html(`
+        <div style="padding: 40px; text-align: center; color: #636e72;">
+          <h3>Superblocks SDK not loaded</h3>
+          <p>Please check your network connection.</p>
+        </div>
+      `);
+      return;
+    }
+    
+    try {
+      // Simple embed - exactly like Superblocks template
+      const sbApp = Superblocks.createSuperblocksEmbed({
+        src: "https://app.superblocks.com/embed/applications/2e984c48-651a-4238-94ec-c4153a637930"
+        // No properties for now - just get it working first
+      });
+      
+      // Add it to our container
+      const container = document.getElementById('superblocks-container');
+      container.innerHTML = ''; // Clear any existing content
+      container.appendChild(sbApp);
+      
+      console.log('✅ Superblocks embed added successfully');
+      
+    } catch (error) {
+      console.error('❌ Error with Superblocks embed:', error);
+      $('#superblocks-container').html(`
+        <div style="padding: 40px; text-align: center; color: #e74c3c;">
+          <h3>Embed Error</h3>
+          <p>Error: ${error.message}</p>
+        </div>
+      `);
+    }
+  };
+  
+  // Helper function to calculate age from birth date
+  function calculateAge(birthDate) {
+    if (!birthDate) return 'Unknown';
+    try {
+      const birth = new Date(birthDate);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age + ' years';
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
 
 })(window);
