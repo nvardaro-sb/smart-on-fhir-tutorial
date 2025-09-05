@@ -3,12 +3,20 @@
     var ret = $.Deferred();
 
     function onError() {
-      console.log('Loading error', arguments);
+      console.error('FHIR Loading error details:', arguments);
+      console.error('Error occurred at:', new Date().toISOString());
+      console.error('Current URL:', window.location.href);
+      console.error('Session storage:', window.sessionStorage);
+      console.error('Local storage:', window.localStorage);
       ret.reject();
     }
 
     function onReady(smart)  {
+      console.log('FHIR client ready, smart object:', smart);
+      console.log('Smart object keys:', Object.keys(smart));
+      
       if (smart.hasOwnProperty('patient')) {
+        console.log('Patient context available:', smart.patient);
         var patient = smart.patient;
         var pt = patient.read();
         var obv = smart.patient.api.fetchAll({
@@ -22,18 +30,36 @@
                     }
                   });
 
-        $.when(pt, obv).fail(onError);
+        $.when(pt, obv).fail(function(error) {
+          console.error('Failed to fetch patient data or observations:', error);
+          onError();
+        });
 
         $.when(pt, obv).done(function(patient, obv) {
+          console.log('Successfully fetched patient data:', patient);
+          console.log('Successfully fetched observations:', obv);
+          
           var byCodes = smart.byCodes(obv, 'code');
           var gender = patient.gender;
 
           var fname = '';
           var lname = '';
 
-          if (typeof patient.name[0] !== 'undefined') {
-            fname = patient.name[0].given.join(' ');
-            lname = patient.name[0].family.join(' ');
+          console.log('Patient name structure:', patient.name);
+          if (typeof patient.name !== 'undefined' && patient.name.length > 0 && typeof patient.name[0] !== 'undefined') {
+            // Handle both array (FHIR DSTU2/STU3) and string (FHIR R4) formats for given names
+            if (Array.isArray(patient.name[0].given)) {
+              fname = patient.name[0].given.join(' ');
+            } else if (typeof patient.name[0].given === 'string') {
+              fname = patient.name[0].given;
+            }
+            
+            // Handle both array (FHIR DSTU2/STU3) and string (FHIR R4) formats for family names
+            if (Array.isArray(patient.name[0].family)) {
+              lname = patient.name[0].family.join(' ');
+            } else if (typeof patient.name[0].family === 'string') {
+              lname = patient.name[0].family;
+            }
           }
 
           var height = byCodes('8302-2');
@@ -63,11 +89,18 @@
           ret.resolve(p);
         });
       } else {
+        console.error('No patient context available in SMART object');
+        console.error('Available SMART object properties:', Object.keys(smart));
         onError();
       }
     }
 
-    FHIR.oauth2.ready(onReady, onError);
+    try {
+      FHIR.oauth2.ready(onReady, onError);
+    } catch (e) {
+      console.error('Error initializing FHIR client:', e);
+      onError();
+    }
     return ret.promise();
 
   };

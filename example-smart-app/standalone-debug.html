@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Example-SMART-App Standalone Debug</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      .debug-section { background: #f5f5f5; border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px; }
+      .error { background: #ffe6e6; border-color: #ff9999; }
+      .success { background: #e6ffe6; border-color: #99ff99; }
+      .info { background: #e6f3ff; border-color: #99ccff; }
+      pre { background: white; padding: 10px; border-radius: 3px; overflow-x: auto; }
+      .log-entry { font-family: monospace; font-size: 12px; margin: 3px 0; }
+    </style>
+  </head>
+  <body>
+    <h1>SMART on FHIR Debug - Standalone Mode</h1>
+    
+    <div id="status" class="debug-section info">
+      <h3>Status</h3>
+      <p>Initializing debug session...</p>
+    </div>
+
+    <div class="debug-section">
+      <h3>Environment Information</h3>
+      <div id="env-info"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>FHIR Client Library Status</h3>
+      <div id="fhir-status"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>OAuth2 Configuration</h3>
+      <div id="oauth-config"></div>
+    </div>
+
+    <div class="debug-section">
+      <h3>Debug Log</h3>
+      <div id="debug-log"></div>
+    </div>
+
+    <script src='./lib/js/fhir-client-v0.1.12.js'></script>
+    <script src='./lib/js/fhir-client-cerner-additions-1.0.0.js'></script>
+    <script>
+      let logEntries = [];
+
+      function debugLog(level, message, data) {
+        const timestamp = new Date().toISOString();
+        const entry = { timestamp, level, message, data };
+        logEntries.push(entry);
+        
+        console[level](timestamp + ' - ' + message, data || '');
+        
+        // Display in UI
+        const logDiv = document.getElementById('debug-log');
+        const p = document.createElement('div');
+        p.className = 'log-entry';
+        p.style.color = level === 'error' ? 'red' : level === 'warn' ? 'orange' : 'black';
+        p.innerHTML = `<strong>[${level.toUpperCase()}]</strong> ${timestamp} - ${message}`;
+        if (data) {
+          p.innerHTML += '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        }
+        logDiv.appendChild(p);
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+
+      function updateStatus(message, type) {
+        const statusDiv = document.getElementById('status');
+        statusDiv.className = 'debug-section ' + type;
+        statusDiv.innerHTML = '<h3>Status</h3><p>' + message + '</p>';
+      }
+
+      function displayEnvironmentInfo() {
+        const info = {
+          url: window.location.href,
+          userAgent: navigator.userAgent,
+          cookiesEnabled: navigator.cookieEnabled,
+          onLine: navigator.onLine,
+          protocol: window.location.protocol,
+          host: window.location.host,
+          pathname: window.location.pathname,
+          search: window.location.search,
+          hash: window.location.hash
+        };
+
+        document.getElementById('env-info').innerHTML = '<pre>' + JSON.stringify(info, null, 2) + '</pre>';
+      }
+
+      function displayFHIRStatus() {
+        const fhirInfo = {
+          FHIR_available: typeof window.FHIR !== 'undefined',
+          FHIR_oauth2_available: typeof window.FHIR !== 'undefined' && typeof window.FHIR.oauth2 !== 'undefined',
+          FHIR_version: window.FHIR ? window.FHIR.version || 'unknown' : 'N/A',
+          methods_available: window.FHIR && window.FHIR.oauth2 ? Object.keys(window.FHIR.oauth2) : []
+        };
+
+        document.getElementById('fhir-status').innerHTML = '<pre>' + JSON.stringify(fhirInfo, null, 2) + '</pre>';
+      }
+
+      function displayOAuthConfig() {
+        const config = {
+          client_id: 'fc4ee473-1523-46d7-ad22-7b68b3205219',
+          scope: 'patient/Patient.read patient/Observation.read launch/patient openid profile',
+          redirect_uri: 'https://nvardaro-sb.github.io/smart-on-fhir-tutorial/example-smart-app/',
+          iss: 'https://fhir-ehr-code.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d'
+        };
+
+        document.getElementById('oauth-config').innerHTML = '<pre>' + JSON.stringify(config, null, 2) + '</pre>';
+        
+        return config;
+      }
+
+      // Initialize debug session
+      debugLog('info', '=== SMART on FHIR Standalone Debug Session Started ===');
+      updateStatus('Debug session started', 'info');
+
+      // Display environment info
+      displayEnvironmentInfo();
+      displayFHIRStatus();
+      const authConfig = displayOAuthConfig();
+
+      // Check for required libraries
+      if (typeof window.FHIR === 'undefined') {
+        debugLog('error', 'FHIR client library not loaded');
+        updateStatus('ERROR: FHIR client library not available', 'error');
+      } else if (typeof window.FHIR.oauth2 === 'undefined') {
+        debugLog('error', 'FHIR OAuth2 module not available');
+        updateStatus('ERROR: FHIR OAuth2 module not available', 'error');
+      } else {
+        debugLog('info', 'FHIR client library loaded successfully');
+        updateStatus('FHIR client library loaded. Attempting authorization...', 'info');
+        
+        // Attempt authorization
+        try {
+          debugLog('info', 'Starting OAuth2 authorization flow', authConfig);
+          
+          FHIR.oauth2.authorize(authConfig);
+          
+          debugLog('info', 'Authorization call completed');
+          updateStatus('OAuth2 authorization initiated successfully', 'success');
+          
+        } catch (error) {
+          debugLog('error', 'Error during OAuth2 authorization', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+          });
+          updateStatus('ERROR: OAuth2 authorization failed - ' + error.message, 'error');
+        }
+      }
+
+      // Error handlers
+      window.addEventListener('error', function(event) {
+        debugLog('error', 'JavaScript Error', {
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          stack: event.error ? event.error.stack : 'No stack trace'
+        });
+      });
+
+      window.addEventListener('unhandledrejection', function(event) {
+        debugLog('error', 'Unhandled Promise Rejection', event.reason);
+      });
+    </script>
+  </body>
+</html>

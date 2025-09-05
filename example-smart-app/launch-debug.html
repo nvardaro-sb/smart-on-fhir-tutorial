@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <link rel='stylesheet' type='text/css' href='./src/css/example-smart-app.css'>
+    <title>Example-SMART-App Debug Launch</title>
+  </head>
+  <body>
+    <div id="debug-info" style="background: #f0f8ff; border: 1px solid #0066cc; padding: 15px; margin: 10px; border-radius: 5px;">
+      <h3>Debug Launch Page</h3>
+      <p>This page provides detailed logging for OAuth2 authorization debugging.</p>
+      <div id="debug-log"></div>
+    </div>
+
+    <!-- FHIR Client JS Library -->
+    <script src='./lib/js/fhir-client-v0.1.12.js'></script>
+    <!-- Prevent session bleed caused by single threaded embedded browser and sessionStorage API -->
+    <script src='./lib/js/fhir-client-cerner-additions-1.0.0.js'></script>
+    <script>
+      // Enhanced logging function
+      function debugLog(message, data) {
+        var timestamp = new Date().toISOString();
+        var logEntry = timestamp + ' - ' + message;
+        if (data) {
+          logEntry += ' - Data: ' + JSON.stringify(data, null, 2);
+        }
+        console.log(logEntry);
+        
+        // Also display in UI
+        var debugDiv = document.getElementById('debug-log');
+        var p = document.createElement('p');
+        p.style.fontSize = '12px';
+        p.style.fontFamily = 'monospace';
+        p.style.margin = '5px 0';
+        p.style.padding = '3px';
+        p.style.backgroundColor = '#ffffff';
+        p.innerHTML = logEntry.replace(/\n/g, '<br>');
+        debugDiv.appendChild(p);
+      }
+
+      // Log initial environment
+      debugLog('=== FHIR Debug Launch Started ===');
+      debugLog('Current URL', window.location.href);
+      debugLog('URL Parameters', Object.fromEntries(new URLSearchParams(window.location.search)));
+      debugLog('Referrer', document.referrer);
+      debugLog('User Agent', navigator.userAgent);
+      debugLog('Available FHIR object', typeof window.FHIR);
+      
+      if (window.FHIR && window.FHIR.oauth2) {
+        debugLog('FHIR.oauth2 available', Object.keys(window.FHIR.oauth2));
+      } else {
+        debugLog('ERROR: FHIR.oauth2 not available');
+      }
+
+      // Session and Local Storage
+      debugLog('Session Storage Keys', Object.keys(window.sessionStorage || {}));
+      debugLog('Local Storage Keys', Object.keys(window.localStorage || {}));
+
+      // Configuration object
+      var authConfig = {
+        'client_id': 'fc4ee473-1523-46d7-ad22-7b68b3205219',
+        'scope': 'patient/Patient.read patient/Observation.read launch openid profile',
+        'redirect_uri': 'https://nvardaro-sb.github.io/smart-on-fhir-tutorial/example-smart-app/'
+      };
+
+      debugLog('Authorization Configuration', authConfig);
+
+      try {
+        debugLog('Attempting FHIR.oauth2.authorize...');
+        
+        // Wrap the authorize call in try-catch with detailed logging
+        FHIR.oauth2.authorize(authConfig);
+        
+        debugLog('FHIR.oauth2.authorize call completed without immediate error');
+        
+      } catch (error) {
+        debugLog('ERROR in FHIR.oauth2.authorize', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
+
+      // Add window error handler
+      window.addEventListener('error', function(event) {
+        debugLog('Window Error Event', {
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          error: event.error ? event.error.toString() : 'No error object'
+        });
+      });
+
+      // Add unhandled promise rejection handler
+      window.addEventListener('unhandledrejection', function(event) {
+        debugLog('Unhandled Promise Rejection', {
+          reason: event.reason,
+          promise: event.promise
+        });
+      });
+    </script>
+    
+    <div class="spinner">
+      <div class="bounce1"></div>
+      <div class="bounce2"></div>
+      <div class="bounce3"></div>
+    </div>
+  </body>
+</html>

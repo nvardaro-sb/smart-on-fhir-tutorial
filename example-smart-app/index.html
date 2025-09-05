@@ -90,10 +90,39 @@
           drawVisualization(p);
         },
 
-        //Display 'Failed to call FHIR Service' if extractData failed
+        //Display detailed error information if extractData failed
         function() {
           $('#loading').hide();
-          $('#errors').html('<p> Failed to call FHIR Service </p>');
+          var errorHtml = '<div style="background: #ffe6e6; border: 1px solid #ff9999; padding: 15px; margin: 10px 0; border-radius: 5px;">';
+          errorHtml += '<h3 style="color: #cc0000; margin-top: 0;">Failed to call FHIR Service</h3>';
+          errorHtml += '<p><strong>Possible causes:</strong></p>';
+          errorHtml += '<ul>';
+          errorHtml += '<li>OAuth2 authorization failed</li>';
+          errorHtml += '<li>Invalid client configuration</li>';
+          errorHtml += '<li>Network connectivity issues</li>';
+          errorHtml += '<li>FHIR server is unavailable</li>';
+          errorHtml += '<li>Invalid redirect URI</li>';
+          errorHtml += '</ul>';
+          errorHtml += '<p><strong>Debug information:</strong></p>';
+          errorHtml += '<ul>';
+          errorHtml += '<li>Current URL: ' + window.location.href + '</li>';
+          errorHtml += '<li>User Agent: ' + navigator.userAgent + '</li>';
+          errorHtml += '<li>Timestamp: ' + new Date().toISOString() + '</li>';
+          errorHtml += '</ul>';
+          errorHtml += '<p><em>Check the browser console for detailed error logs.</em></p>';
+          errorHtml += '</div>';
+          $('#errors').html(errorHtml);
+          
+          // Log additional debug info to console
+          console.error('=== FHIR App Debug Information ===');
+          console.error('URL Parameters:', new URLSearchParams(window.location.search));
+          console.error('Session Storage Keys:', Object.keys(window.sessionStorage || {}));
+          console.error('Local Storage Keys:', Object.keys(window.localStorage || {}));
+          console.error('Available global objects:', {
+            FHIR: typeof window.FHIR,
+            jQuery: typeof window.jQuery,
+            $: typeof window.$
+          });
         }
       );
     </script>
