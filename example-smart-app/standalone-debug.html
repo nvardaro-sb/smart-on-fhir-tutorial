@@ -102,10 +102,10 @@
 
       function displayOAuthConfig() {
         const config = {
-          client_id: 'fc4ee473-1523-46d7-ad22-7b68b3205219',
+          client_id: 'my_web_app',  // Generic client ID for SMART Health IT Sandbox
           scope: 'patient/Patient.read patient/Observation.read launch/patient openid profile',
           redirect_uri: 'https://nvardaro-sb.github.io/smart-on-fhir-tutorial/example-smart-app/',
-          iss: 'https://fhir-ehr-code.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d'
+          iss: 'https://launch.smarthealthit.org/v/r4/sim/eyJoIjoiMSIsImIiOiJzbWFydC03Nzc3NyIsImUiOiJzbWFydC1QcmFjdGl0aW9uZXItNzE2MTQxNDIifQ/fhir'  // SMART Health IT R4 Sandbox
         };
 
         document.getElementById('oauth-config').innerHTML = '<pre>' + JSON.stringify(config, null, 2) + '</pre>';
