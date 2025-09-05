@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge' />
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+    <title>Example-SMART-App (Modern)</title>
+    <link rel='stylesheet' type='text/css' href='./src/css/example-smart-app.css'>
+  </head>
+  <body>
+    <div id='errors'></div>
+    
+    <div id="loading" class="spinner">
+      <div class="bounce1"></div>
+      <div class="bounce2"></div>
+      <div class="bounce3"></div>
+    </div>
+    
+    <div id='holder' style="display: none;">
+      <h2>Example-SMART-App (Modern FHIR Client)</h2>
+      
+      <div style="background: #e8f5e8; border: 1px solid #4caf50; padding: 10px; margin: 10px 0; border-radius: 5px;">
+        <strong>✅ Using Modern FHIR Client v2.5.3</strong>
+        <p>This version uses the latest SMART on FHIR client library and should work with your Oracle Health configuration.</p>
+      </div>
+
+      <h2>Patient Resource</h2>
+      <table>
+        <tr><th>First Name:</th><td id='fname'></td></tr>
+        <tr><th>Last Name:</th><td id='lname'></td></tr>
+        <tr><th>Gender:</th><td id='gender'></td></tr>
+        <tr><th>Date of Birth:</th><td id='birthdate'></td></tr>
+      </table>
+      
+      <h2>Observation Resource</h2>
+      <table>
+        <tr><th>Height:</th><td id='height'></td></tr>
+        <tr><th>Systolic Blood Pressure:</th><td id='systolicbp'></td></tr>
+        <tr><th>Diastolic Blood Pressure:</th><td id='diastolicbp'></td></tr>
+        <tr><th>LDL:</th><td id='ldl'></td></tr>
+        <tr><th>HDL:</th><td id='hdl'></td></tr>
+      </table>
+    </div>
+
+    <!-- Modern SMART on FHIR Client -->
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.5.3/build/fhirclient.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    
+    <script>
+      // Modern FHIR client implementation
+      async function extractData() {
+        console.log('🚀 Starting modern FHIR data extraction...');
+        
+        try {
+          // Use modern FHIR client to get authenticated client
+          const client = await FHIR.oauth2.ready();
+          console.log('✅ FHIR client ready:', client);
+          
+          // Get patient data
+          console.log('📥 Fetching patient data...');
+          const patient = await client.patient.read();
+          console.log('👤 Patient data:', patient);
+          
+          // Get observations
+          console.log('📊 Fetching observations...');
+          const observations = await client.patient.request('/Observation?code=http://loinc.org|8302-2,http://loinc.org|8462-4,http://loinc.org|8480-6,http://loinc.org|2085-9,http://loinc.org|2089-1,http://loinc.org|55284-4&_sort=-date&_count=20');
+          console.log('📊 Observations:', observations);
+          
+          // Process the data using modern approach
+          const processedData = processPatientData(patient, observations);
+          console.log('✅ Processed data:', processedData);
+          
+          return processedData;
+          
+        } catch (error) {
+          console.error('❌ Error in extractData:', error);
+          throw error;
+        }
+      }
+
+      function processPatientData(patient, observations) {
+        // Process patient name (handle both FHIR R4 string and older array formats)
+        let fname = '';
+        let lname = '';
+        
+        if (patient.name && patient.name.length > 0) {
+          const name = patient.name[0];
+          
+          // Handle given names
+          if (Array.isArray(name.given)) {
+            fname = name.given.join(' ');
+          } else if (typeof name.given === 'string') {
+            fname = name.given;
+          }
+          
+          // Handle family names  
+          if (Array.isArray(name.family)) {
+            lname = name.family.join(' ');
+          } else if (typeof name.family === 'string') {
+            lname = name.family;
+          }
+        }
+
+        // Create a lookup function for observations by code
+        function findObservationsByCode(observations, codeSystem, code) {
+          if (!observations.entry) return [];
+          
+          return observations.entry
+            .map(entry => entry.resource)
+            .filter(obs => 
+              obs.code && obs.code.coding && 
+              obs.code.coding.some(coding => 
+                coding.system === codeSystem && coding.code === code
+              )
+            );
+        }
+
+        // Helper function to get quantity value and unit
+        function getQuantityValueAndUnit(observation) {
+          if (observation && observation.valueQuantity) {
+            const value = observation.valueQuantity.value;
+            const unit = observation.valueQuantity.unit;
+            return value && unit ? `${value} ${unit}` : undefined;
+          }
+          return undefined;
+        }
+
+        // Helper function to get blood pressure values
+        function getBloodPressureValue(bpObservations, targetCode) {
+          for (const obs of bpObservations) {
+            if (obs.component) {
+              const component = obs.component.find(comp => 
+                comp.code && comp.code.coding && 
+                comp.code.coding.some(coding => coding.code === targetCode)
+              );
+              if (component && component.valueQuantity) {
+                return `${component.valueQuantity.value} ${component.valueQuantity.unit}`;
+              }
+            }
+          }
+          return undefined;
+        }
+
+        // Find specific observations
+        const heightObs = findObservationsByCode(observations, 'http://loinc.org', '8302-2');
+        const bpObs = findObservationsByCode(observations, 'http://loinc.org', '55284-4');
+        const hdlObs = findObservationsByCode(observations, 'http://loinc.org', '2085-9');
+        const ldlObs = findObservationsByCode(observations, 'http://loinc.org', '2089-1');
+
+        return {
+          fname: fname,
+          lname: lname,
+          gender: patient.gender || '',
+          birthdate: patient.birthDate || '',
+          height: getQuantityValueAndUnit(heightObs[0]) || '',
+          systolicbp: getBloodPressureValue(bpObs, '8480-6') || '',
+          diastolicbp: getBloodPressureValue(bpObs, '8462-4') || '',
+          hdl: getQuantityValueAndUnit(hdlObs[0]) || '',
+          ldl: getQuantityValueAndUnit(ldlObs[0]) || ''
+        };
+      }
+
+      function drawVisualization(data) {
+        console.log('🎨 Drawing visualization with data:', data);
+        
+        $('#holder').show();
+        $('#loading').hide();
+        
+        $('#fname').html(data.fname || 'Not available');
+        $('#lname').html(data.lname || 'Not available');
+        $('#gender').html(data.gender || 'Not available');
+        $('#birthdate').html(data.birthdate || 'Not available');
+        $('#height').html(data.height || 'Not available');
+        $('#systolicbp').html(data.systolicbp || 'Not available');
+        $('#diastolicbp').html(data.diastolicbp || 'Not available');
+        $('#ldl').html(data.ldl || 'Not available');
+        $('#hdl').html(data.hdl || 'Not available');
+      }
+
+      function showError(message) {
+        $('#loading').hide();
+        
+        let errorHtml = '<div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 10px 0; border-radius: 5px; color: #721c24;">';
+        errorHtml += '<h3 style="margin-top: 0;">❌ FHIR Service Error</h3>';
+        errorHtml += '<p><strong>Error:</strong> ' + message + '</p>';
+        errorHtml += '<p><strong>Possible solutions:</strong></p>';
+        errorHtml += '<ul>';
+        errorHtml += '<li>Check if your OAuth2 flow completed successfully</li>';
+        errorHtml += '<li>Verify your client credentials are still valid</li>';
+        errorHtml += '<li>Ensure you have the required scopes (patient/Patient.read patient/Observation.read)</li>';
+        errorHtml += '<li>Check if the FHIR server is accessible</li>';
+        errorHtml += '</ul>';
+        errorHtml += '<p><strong>Debug info:</strong></p>';
+        errorHtml += '<ul>';
+        errorHtml += '<li>URL: ' + window.location.href + '</li>';
+        errorHtml += '<li>Timestamp: ' + new Date().toISOString() + '</li>';
+        errorHtml += '</ul>';
+        errorHtml += '<p><em>Check browser console for detailed logs</em></p>';
+        errorHtml += '</div>';
+        
+        $('#errors').html(errorHtml);
+        
+        console.error('=== FHIR App Error Details ===');
+        console.error('Error message:', message);
+        console.error('Current URL:', window.location.href);
+        console.error('URL parameters:', new URLSearchParams(window.location.search));
+        console.error('Hash parameters:', window.location.hash);
+      }
+
+      // Main execution
+      $(document).ready(function() {
+        console.log('📱 Modern SMART app starting...');
+        
+        extractData()
+          .then(data => {
+            console.log('✅ Data extraction successful');
+            drawVisualization(data);
+          })
+          .catch(error => {
+            console.error('❌ Data extraction failed:', error);
+            showError(error.message || 'Unknown error occurred');
+          });
+      });
+
+      // Global error handlers
+      window.addEventListener('error', function(event) {
+        console.error('💥 JavaScript error:', event.error);
+      });
+
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error('🚫 Unhandled promise rejection:', event.reason);
+      });
+    </script>
+  </body>
+</html>

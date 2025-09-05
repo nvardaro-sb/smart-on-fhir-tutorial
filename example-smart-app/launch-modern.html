@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Example-SMART-App Launch (Modern)</title>
+    <link rel='stylesheet' type='text/css' href='./src/css/example-smart-app.css'>
+    <style>
+      .modern-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+        text-align: center;
+      }
+      .config-display {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="modern-banner">
+      <h2>🚀 Modern SMART on FHIR Launch</h2>
+      <p>Using FHIR Client v2.5.3 with your Oracle Health configuration</p>
+    </div>
+
+    <div class="config-display">
+      <h3>🏥 Your Configuration</h3>
+      <strong>Client ID:</strong> fc4ee473-1523-46d7-ad22-7b68b3205219<br>
+      <strong>Redirect URI:</strong> https://nvardaro-sb.github.io/smart-on-fhir-tutorial/example-smart-app/<br>
+      <strong>FHIR Server:</strong> Oracle Health (Cerner) R4<br>
+      <strong>Scopes:</strong> patient/Patient.read patient/Observation.read launch openid profile
+    </div>
+    
+    <div id="status" style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; margin: 10px 0; border-radius: 5px; color: #0c5460;">
+      <h3>📊 Status</h3>
+      <p id="status-message">Initializing OAuth2 flow...</p>
+    </div>
+
+    <div class="spinner">
+      <div class="bounce1"></div>
+      <div class="bounce2"></div>
+      <div class="bounce3"></div>
+    </div>
+
+    <!-- Modern SMART on FHIR Client -->
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.5.3/build/fhirclient.js"></script>
+    
+    <script>
+      function updateStatus(message, type = 'info') {
+        const statusDiv = document.getElementById('status');
+        const messageEl = document.getElementById('status-message');
+        
+        const colors = {
+          info: { bg: '#d1ecf1', border: '#bee5eb', text: '#0c5460' },
+          success: { bg: '#d4edda', border: '#c3e6cb', text: '#155724' },
+          error: { bg: '#f8d7da', border: '#f5c6cb', text: '#721c24' },
+          warning: { bg: '#fff3cd', border: '#ffeaa7', text: '#856404' }
+        };
+        
+        const color = colors[type] || colors.info;
+        statusDiv.style.backgroundColor = color.bg;
+        statusDiv.style.borderColor = color.border;
+        statusDiv.style.color = color.text;
+        messageEl.textContent = message;
+        
+        console.log(`[${type.toUpperCase()}] ${message}`);
+      }
+
+      // Your Oracle Health configuration
+      const config = {
+        clientId: 'fc4ee473-1523-46d7-ad22-7b68b3205219',
+        scope: 'patient/Patient.read patient/Observation.read launch openid profile',
+        redirectUri: 'https://nvardaro-sb.github.io/smart-on-fhir-tutorial/example-smart-app/index-modern.html'
+      };
+
+      console.log('🚀 Modern SMART Launch starting...');
+      console.log('Configuration:', config);
+      
+      // Check if we have launch parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const iss = urlParams.get('iss');
+      const launch = urlParams.get('launch');
+      
+      if (iss) {
+        config.iss = iss;
+        console.log('📡 ISS parameter found:', iss);
+        updateStatus('ISS found: ' + iss + ' - Starting OAuth flow...');
+      } else {
+        // Fallback to your known FHIR server
+        config.iss = 'https://fhir-ehr-code.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d';
+        console.log('📡 Using fallback ISS:', config.iss);
+        updateStatus('Using Oracle Health FHIR server - Starting OAuth flow...');
+      }
+      
+      if (launch) {
+        config.launch = launch;
+        console.log('🎯 Launch parameter found:', launch);
+      }
+
+      // Enhanced error handling
+      function handleLaunchError(error) {
+        console.error('❌ Launch error:', error);
+        updateStatus(`Launch failed: ${error.message}`, 'error');
+        
+        // Show detailed error information
+        const errorDetails = document.createElement('div');
+        errorDetails.style.cssText = 'background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 15px 0; border-radius: 5px; color: #721c24;';
+        errorDetails.innerHTML = `
+          <h3>🚨 Launch Error Details</h3>
+          <p><strong>Error:</strong> ${error.message}</p>
+          <p><strong>Possible causes:</strong></p>
+          <ul>
+            <li>EHR launch context is invalid or expired</li>
+            <li>Client credentials need to be refreshed</li>
+            <li>Network connectivity issues</li>
+            <li>FHIR server configuration changes</li>
+          </ul>
+          <p><strong>Debug information:</strong></p>
+          <ul>
+            <li>URL: ${window.location.href}</li>
+            <li>ISS: ${config.iss || 'Not provided'}</li>
+            <li>Launch: ${config.launch || 'Not provided'}</li>
+            <li>Client ID: ${config.clientId}</li>
+            <li>Timestamp: ${new Date().toISOString()}</li>
+          </ul>
+          <p><strong>Next steps:</strong></p>
+          <ul>
+            <li>Check the browser console for detailed logs</li>
+            <li>Verify your app is registered with the correct redirect URI</li>
+            <li>Try launching from the EHR again</li>
+          </ul>
+        `;
+        document.body.appendChild(errorDetails);
+      }
+
+      // Start the OAuth flow
+      try {
+        updateStatus('🔐 Initiating OAuth2 authorization...');
+        console.log('🔐 Starting OAuth2 authorize with config:', config);
+        
+        FHIR.oauth2.authorize(config).catch(handleLaunchError);
+        
+        console.log('✅ OAuth2 authorize call completed');
+        updateStatus('OAuth2 flow initiated successfully!', 'success');
+        
+      } catch (error) {
+        handleLaunchError(error);
+      }
+
+      // Global error handlers
+      window.addEventListener('error', function(event) {
+        console.error('💥 JavaScript error during launch:', {
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          stack: event.error ? event.error.stack : 'No stack'
+        });
+        
+        updateStatus('JavaScript error occurred during launch', 'error');
+      });
+
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error('🚫 Unhandled promise rejection during launch:', event.reason);
+        updateStatus('Promise rejection during launch: ' + event.reason, 'error');
+      });
+
+      // Log environment info
+      console.log('🌐 Launch environment:', {
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+        referrer: document.referrer,
+        timestamp: new Date().toISOString()
+      });
+    </script>
+  </body>
+</html>

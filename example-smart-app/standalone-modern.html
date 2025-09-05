@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Example-SMART-App Standalone (Modern)</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+      .modern-header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 25px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+      .card { background: white; border-radius: 8px; padding: 20px; margin: 15px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+      .status-card { border-left: 4px solid #007bff; }
+      .success-card { border-left: 4px solid #28a745; }
+      .error-card { border-left: 4px solid #dc3545; }
+      .config-grid { display: grid; grid-template-columns: 200px 1fr; gap: 10px; font-size: 14px; }
+      .config-label { font-weight: 600; color: #495057; }
+      .config-value { font-family: Monaco, monospace; background: #f8f9fa; padding: 3px 6px; border-radius: 3px; }
+      button { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; margin: 5px; }
+      button:hover { background: #0056b3; }
+      button.success { background: #28a745; } button.success:hover { background: #218838; }
+      .spinner { display: none; text-align: center; padding: 20px; }
+      .loading-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #007bff; margin: 0 2px; animation: loading 1.4s infinite ease-in-out; }
+      .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+      .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+      @keyframes loading { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+    </style>
+  </head>
+  <body>
+    <div class="modern-header">
+      <h1>🖥️ SMART on FHIR - Standalone Mode</h1>
+      <p>Modern FHIR Client v2.5.3 • Oracle Health Compatible</p>
+    </div>
+
+    <div id="status-card" class="card status-card">
+      <h3>📊 Current Status</h3>
+      <p id="status-message">Ready to start OAuth2 flow...</p>
+      <div id="spinner" class="spinner">
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🏥 Oracle Health Configuration</h3>
+      <div class="config-grid">
+        <div class="config-label">Client ID:</div>
+        <div class="config-value">fc4ee473-1523-46d7-ad22-7b68b3205219</div>
+        
+        <div class="config-label">FHIR Server:</div>
+        <div class="config-value">https://fhir-ehr-code.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d</div>
+        
+        <div class="config-label">Redirect URI:</div>
+        <div class="config-value">https://nvardaro-sb.github.io/smart-on-fhir-tutorial/example-smart-app/</div>
+        
+        <div class="config-label">Scopes:</div>
+        <div class="config-value">patient/Patient.read patient/Observation.read launch/patient openid profile</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🚀 Launch Options</h3>
+      <p>Choose how to start your SMART on FHIR session:</p>
+      
+      <button onclick="launchOracleHealth()" class="success">
+        🏥 Launch Oracle Health (Your Config)
+      </button>
+      
+      <button onclick="launchSmartHealthIT()">
+        🧪 Launch SMART Health IT (Test)
+      </button>
+      
+      <button onclick="showDebugInfo()">
+        🔍 Show Debug Information
+      </button>
+    </div>
+
+    <div id="debug-card" class="card" style="display: none;">
+      <h3>🔍 Debug Information</h3>
+      <div id="debug-content"></div>
+    </div>
+
+    <div id="result-card" class="card" style="display: none;">
+      <h3>📋 Results</h3>
+      <div id="result-content"></div>
+    </div>
+
+    <!-- Modern SMART on FHIR Client -->
+    <script src="https://cdn.jsdelivr.net/npm/fhirclient@2.5.3/build/fhirclient.js"></script>
+    
+    <script>
+      // Status management
+      function updateStatus(message, type = 'info', showSpinner = false) {
+        const statusCard = document.getElementById('status-card');
+        const statusMessage = document.getElementById('status-message');
+        const spinner = document.getElementById('spinner');
+        
+        const types = {
+          info: { class: 'status-card', color: '#007bff' },
+          success: { class: 'success-card', color: '#28a745' },
+          error: { class: 'error-card', color: '#dc3545' }
+        };
+        
+        const config = types[type] || types.info;
+        statusCard.className = `card ${config.class}`;
+        statusMessage.textContent = message;
+        spinner.style.display = showSpinner ? 'block' : 'none';
+        
+        console.log(`[${type.toUpperCase()}] ${message}`);
+      }
+
+      // Debug information display
+      function showDebugInfo() {
+        const debugCard = document.getElementById('debug-card');
+        const debugContent = document.getElementById('debug-content');
+        
+        const debugInfo = {
+          currentUrl: window.location.href,
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString(),
+          urlParams: Object.fromEntries(new URLSearchParams(window.location.search)),
+          hashParams: window.location.hash ? Object.fromEntries(new URLSearchParams(window.location.hash.substring(1))) : {},
+          fhirClient: {
+            available: typeof window.FHIR !== 'undefined',
+            version: window.FHIR ? 'Modern (2.5.3)' : 'Not loaded',
+            oauth2Available: window.FHIR && typeof window.FHIR.oauth2 !== 'undefined'
+          },
+          localStorage: Object.keys(localStorage),
+          sessionStorage: Object.keys(sessionStorage)
+        };
+        
+        debugContent.innerHTML = `<pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; font-size: 12px; overflow-x: auto;">${JSON.stringify(debugInfo, null, 2)}</pre>`;
+        debugCard.style.display = 'block';
+        
+        updateStatus('Debug information displayed', 'info');
+      }
+
+      // Oracle Health (your configuration)
+      async function launchOracleHealth() {
+        updateStatus('🏥 Starting Oracle Health OAuth flow...', 'info', true);
+        
+        const config = {
+          clientId: 'fc4ee473-1523-46d7-ad22-7b68b3205219',
+          scope: 'patient/Patient.read patient/Observation.read launch/patient openid profile',
+          redirectUri: 'https://nvardaro-sb.github.io/smart-on-fhir-tutorial/example-smart-app/index-modern.html',
+          iss: 'https://fhir-ehr-code.cerner.com/r4/ec2458f2-1e24-41c8-b71b-0e701af7583d'
+        };
+        
+        console.log('🏥 Oracle Health config:', config);
+        
+        try {
+          await FHIR.oauth2.authorize(config);
+          updateStatus('✅ Oracle Health OAuth flow initiated!', 'success');
+        } catch (error) {
+          console.error('❌ Oracle Health OAuth error:', error);
+          updateStatus(`❌ Oracle Health OAuth failed: ${error.message}`, 'error');
+          showErrorDetails(error, config);
+        }
+      }
+
+      // SMART Health IT (test configuration)
+      async function launchSmartHealthIT() {
+        updateStatus('🧪 Starting SMART Health IT test flow...', 'info', true);
+        
+        const config = {
+          clientId: 'my_web_app',
+          scope: 'patient/Patient.read patient/Observation.read launch/patient openid profile',
+          redirectUri: window.location.origin + '/smart-on-fhir-tutorial/example-smart-app/index-modern.html',
+          iss: 'https://launch.smarthealthit.org/v/r4/sim/eyJoIjoiMSIsImIiOiJzbWFydC03Nzc3NyIsImUiOiJzbWFydC1QcmFjdGl0aW9uZXItNzE2MTQxNDIifQ/fhir'
+        };
+        
+        console.log('🧪 SMART Health IT config:', config);
+        
+        try {
+          await FHIR.oauth2.authorize(config);
+          updateStatus('✅ SMART Health IT OAuth flow initiated!', 'success');
+        } catch (error) {
+          console.error('❌ SMART Health IT OAuth error:', error);
+          updateStatus(`❌ SMART Health IT OAuth failed: ${error.message}`, 'error');
+          showErrorDetails(error, config);
+        }
+      }
+
+      // Error details display
+      function showErrorDetails(error, config) {
+        const resultCard = document.getElementById('result-card');
+        const resultContent = document.getElementById('result-content');
+        
+        resultContent.innerHTML = `
+          <div style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; border-radius: 5px; color: #721c24;">
+            <h4>🚨 OAuth Error Details</h4>
+            <p><strong>Error:</strong> ${error.message}</p>
+            <p><strong>Stack:</strong></p>
+            <pre style="background: white; padding: 10px; border-radius: 3px; font-size: 11px; max-height: 200px; overflow-y: auto;">${error.stack || 'No stack trace available'}</pre>
+            
+            <h5>Configuration Used:</h5>
+            <pre style="background: white; padding: 10px; border-radius: 3px; font-size: 11px;">${JSON.stringify(config, null, 2)}</pre>
+            
+            <h5>Troubleshooting Tips:</h5>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+              <li>Check if your client ID is still valid and registered</li>
+              <li>Verify the redirect URI matches exactly what's registered</li>
+              <li>Ensure the FHIR server is accessible and supports SMART on FHIR</li>
+              <li>Try the SMART Health IT test configuration to isolate the issue</li>
+            </ul>
+          </div>
+        `;
+        
+        resultCard.style.display = 'block';
+      }
+
+      // Check if we're returning from OAuth
+      async function checkOAuthReturn() {
+        const hasCode = window.location.search.includes('code=');
+        const hasToken = window.location.hash.includes('access_token=');
+        
+        if (hasCode || hasToken) {
+          updateStatus('🔄 Processing OAuth return...', 'info', true);
+          
+          try {
+            const client = await FHIR.oauth2.ready();
+            updateStatus('🎉 OAuth flow completed successfully!', 'success');
+            
+            // Display success information
+            const resultCard = document.getElementById('result-card');
+            const resultContent = document.getElementById('result-content');
+            
+            resultContent.innerHTML = `
+              <div style="background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; border-radius: 5px; color: #155724;">
+                <h4>🎉 OAuth Success!</h4>
+                <p>Successfully authenticated with FHIR server.</p>
+                <p><strong>Patient ID:</strong> ${client.patient ? client.patient.id : 'Not available'}</p>
+                <p><strong>FHIR Base URL:</strong> ${client.state.serverUrl}</p>
+                <p><strong>Token Type:</strong> ${client.state.tokenResponse ? client.state.tokenResponse.token_type : 'Not available'}</p>
+                
+                <h5>🔗 Next Steps:</h5>
+                <p>The OAuth flow completed successfully! You can now:</p>
+                <ul>
+                  <li><a href="index-modern.html" style="color: #007bff;">View the full SMART app</a> to see patient data</li>
+                  <li>Use the authenticated client to fetch FHIR resources</li>
+                  <li>Access patient data within the approved scopes</li>
+                </ul>
+              </div>
+            `;
+            
+            resultCard.style.display = 'block';
+            
+            console.log('✅ FHIR Client ready:', client);
+            
+          } catch (error) {
+            console.error('❌ OAuth completion failed:', error);
+            updateStatus(`❌ OAuth completion failed: ${error.message}`, 'error');
+            showErrorDetails(error, { note: 'Error occurred during OAuth completion' });
+          }
+        }
+      }
+
+      // Initialize page
+      window.addEventListener('load', function() {
+        console.log('🚀 Modern standalone page loaded');
+        
+        if (typeof window.FHIR === 'undefined') {
+          updateStatus('❌ Modern FHIR client failed to load', 'error');
+        } else {
+          updateStatus('✅ Modern FHIR client loaded successfully!', 'success');
+          console.log('✅ FHIR client available:', {
+            version: '2.5.3',
+            oauth2Available: typeof window.FHIR.oauth2 !== 'undefined'
+          });
+        }
+        
+        // Check if returning from OAuth
+        checkOAuthReturn();
+      });
+
+      // Global error handlers
+      window.addEventListener('error', function(event) {
+        console.error('💥 JavaScript error:', event.error);
+        updateStatus('JavaScript error occurred', 'error');
+      });
+
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error('🚫 Unhandled promise rejection:', event.reason);
+        updateStatus(`Promise rejection: ${event.reason}`, 'error');
+      });
+    </script>
+  </body>
+</html>
