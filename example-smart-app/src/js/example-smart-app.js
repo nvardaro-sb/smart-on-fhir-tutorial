@@ -1,109 +1,109 @@
 (function(window){
-  window.extractData = function() {
-    var ret = $.Deferred();
-
-    function onError() {
-      console.error('FHIR Loading error details:', arguments);
+  window.extractData = async function() {
+    console.log('🚀 Starting modern FHIR data extraction...');
+    
+    try {
+      // Use modern FHIR client to get authenticated client
+      const client = await FHIR.oauth2.ready();
+      console.log('✅ FHIR client ready:', client);
+      
+      if (!client.patient) {
+        throw new Error('No patient context available');
+      }
+      
+      // Get patient data
+      console.log('📥 Fetching patient data...');
+      const patient = await client.patient.read();
+      console.log('👤 Patient data:', patient);
+      
+      // Get observations - use modern client request method
+      console.log('📊 Fetching observations...');
+      const observationsQuery = 'Observation?code=' + encodeURIComponent([
+        'http://loinc.org|8302-2',  // Height
+        'http://loinc.org|8462-4',  // Diastolic BP
+        'http://loinc.org|8480-6',  // Systolic BP
+        'http://loinc.org|2085-9',  // HDL
+        'http://loinc.org|2089-1',  // LDL
+        'http://loinc.org|55284-4'  // Blood Pressure
+      ].join(',')) + '&_sort=-date&_count=20';
+      
+      const observations = await client.patient.request(observationsQuery);
+      console.log('📊 Observations:', observations);
+      
+      // Process the data using modern approach
+      const processedData = processPatientData(patient, observations);
+      console.log('✅ Processed data:', processedData);
+      
+      return processedData;
+      
+    } catch (error) {
+      console.error('❌ Error in extractData:', error);
       console.error('Error occurred at:', new Date().toISOString());
       console.error('Current URL:', window.location.href);
-      console.error('Session storage:', window.sessionStorage);
-      console.error('Local storage:', window.localStorage);
-      ret.reject();
+      throw error;
     }
+  };
 
-    function onReady(smart)  {
-      console.log('FHIR client ready, smart object:', smart);
-      console.log('Smart object keys:', Object.keys(smart));
+  function processPatientData(patient, observations) {
+    // Process patient name (handle both FHIR R4 string and older array formats)
+    let fname = '';
+    let lname = '';
+    
+    console.log('Patient name structure:', patient.name);
+    if (patient.name && patient.name.length > 0) {
+      const name = patient.name[0];
       
-      if (smart.hasOwnProperty('patient')) {
-        console.log('Patient context available:', smart.patient);
-        var patient = smart.patient;
-        var pt = patient.read();
-        var obv = smart.patient.api.fetchAll({
-                    type: 'Observation',
-                    query: {
-                      code: {
-                        $or: ['http://loinc.org|8302-2', 'http://loinc.org|8462-4',
-                              'http://loinc.org|8480-6', 'http://loinc.org|2085-9',
-                              'http://loinc.org|2089-1', 'http://loinc.org|55284-4']
-                      }
-                    }
-                  });
-
-        $.when(pt, obv).fail(function(error) {
-          console.error('Failed to fetch patient data or observations:', error);
-          onError();
-        });
-
-        $.when(pt, obv).done(function(patient, obv) {
-          console.log('Successfully fetched patient data:', patient);
-          console.log('Successfully fetched observations:', obv);
-          
-          var byCodes = smart.byCodes(obv, 'code');
-          var gender = patient.gender;
-
-          var fname = '';
-          var lname = '';
-
-          console.log('Patient name structure:', patient.name);
-          if (typeof patient.name !== 'undefined' && patient.name.length > 0 && typeof patient.name[0] !== 'undefined') {
-            // Handle both array (FHIR DSTU2/STU3) and string (FHIR R4) formats for given names
-            if (Array.isArray(patient.name[0].given)) {
-              fname = patient.name[0].given.join(' ');
-            } else if (typeof patient.name[0].given === 'string') {
-              fname = patient.name[0].given;
-            }
-            
-            // Handle both array (FHIR DSTU2/STU3) and string (FHIR R4) formats for family names
-            if (Array.isArray(patient.name[0].family)) {
-              lname = patient.name[0].family.join(' ');
-            } else if (typeof patient.name[0].family === 'string') {
-              lname = patient.name[0].family;
-            }
-          }
-
-          var height = byCodes('8302-2');
-          var systolicbp = getBloodPressureValue(byCodes('55284-4'),'8480-6');
-          var diastolicbp = getBloodPressureValue(byCodes('55284-4'),'8462-4');
-          var hdl = byCodes('2085-9');
-          var ldl = byCodes('2089-1');
-
-          var p = defaultPatient();
-          p.birthdate = patient.birthDate;
-          p.gender = gender;
-          p.fname = fname;
-          p.lname = lname;
-          p.height = getQuantityValueAndUnit(height[0]);
-
-          if (typeof systolicbp != 'undefined')  {
-            p.systolicbp = systolicbp;
-          }
-
-          if (typeof diastolicbp != 'undefined') {
-            p.diastolicbp = diastolicbp;
-          }
-
-          p.hdl = getQuantityValueAndUnit(hdl[0]);
-          p.ldl = getQuantityValueAndUnit(ldl[0]);
-
-          ret.resolve(p);
-        });
-      } else {
-        console.error('No patient context available in SMART object');
-        console.error('Available SMART object properties:', Object.keys(smart));
-        onError();
+      // Handle given names
+      if (Array.isArray(name.given)) {
+        fname = name.given.join(' ');
+      } else if (typeof name.given === 'string') {
+        fname = name.given;
+      }
+      
+      // Handle family names  
+      if (Array.isArray(name.family)) {
+        lname = name.family.join(' ');
+      } else if (typeof name.family === 'string') {
+        lname = name.family;
       }
     }
 
-    try {
-      FHIR.oauth2.ready(onReady, onError);
-    } catch (e) {
-      console.error('Error initializing FHIR client:', e);
-      onError();
+    // Create a lookup function for observations by code
+    function findObservationsByCode(observations, codeSystem, code) {
+      if (!observations.entry) return [];
+      
+      return observations.entry
+        .map(entry => entry.resource)
+        .filter(obs => 
+          obs.code && obs.code.coding && 
+          obs.code.coding.some(coding => 
+            coding.system === codeSystem && coding.code === code
+          )
+        );
     }
-    return ret.promise();
 
-  };
+    // Find specific observations
+    const heightObs = findObservationsByCode(observations, 'http://loinc.org', '8302-2');
+    const bpObs = findObservationsByCode(observations, 'http://loinc.org', '55284-4');
+    const hdlObs = findObservationsByCode(observations, 'http://loinc.org', '2085-9');
+    const ldlObs = findObservationsByCode(observations, 'http://loinc.org', '2089-1');
+
+    // Get blood pressure values
+    const systolicbp = getBloodPressureValue(bpObs, '8480-6');
+    const diastolicbp = getBloodPressureValue(bpObs, '8462-4');
+
+    return {
+      fname: fname,
+      lname: lname,
+      gender: patient.gender || '',
+      birthdate: patient.birthDate || '',
+      height: getQuantityValueAndUnit(heightObs[0]) || '',
+      systolicbp: systolicbp || '',
+      diastolicbp: diastolicbp || '',
+      hdl: getQuantityValueAndUnit(hdlObs[0]) || '',
+      ldl: getQuantityValueAndUnit(ldlObs[0]) || ''
+    };
+  }
 
   function defaultPatient(){
     return {
