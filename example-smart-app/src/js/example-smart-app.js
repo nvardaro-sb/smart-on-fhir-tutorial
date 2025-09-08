@@ -3,11 +3,37 @@
     var ret = $.Deferred();
 
     function onError() {
-      console.log('Loading error', arguments);
+      console.log('🔥 FHIR OAuth Error:', arguments);
+      console.log('📍 Current URL:', window.location.href);
+      console.log('🔑 Session Storage:', Object.keys(sessionStorage).length > 0 ? sessionStorage : 'Empty');
+      console.log('💾 Local Storage:', Object.keys(localStorage).length > 0 ? localStorage : 'Empty');
+      
+      // Show helpful error message
+      $('#loading').hide();
+      $('#holder').html(`
+        <div style="padding: 40px; text-align: center;">
+          <h2 style="color: #e74c3c;">⚠️ Authentication Required</h2>
+          <p>This app requires OAuth authentication through a SMART launch.</p>
+          <p><strong>Are you accessing this page directly?</strong></p>
+          <div style="background: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 4px; text-align: left;">
+            <p><strong>✅ Correct:</strong> Launch through EHR or sandbox</p>
+            <p><strong>❌ Incorrect:</strong> Accessing index.html directly</p>
+            <p><strong>💡 Try:</strong> Clear storage and launch properly</p>
+          </div>
+          <button onclick="sessionStorage.clear(); localStorage.clear(); alert('Storage cleared! Try launching again.');" 
+                  style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Clear Storage & Retry
+          </button>
+        </div>
+      `);
+      
       ret.reject();
     }
 
     function onReady(smart)  {
+      console.log('✅ FHIR OAuth Ready:', smart);
+      console.log('🔍 Smart object keys:', Object.keys(smart || {}));
+      
       if (smart.hasOwnProperty('patient')) {
         var patient = smart.patient;
         var pt = patient.read();
@@ -78,6 +104,7 @@
       }
     }
 
+    console.log('🚀 Starting FHIR OAuth flow...');
     FHIR.oauth2.ready(onReady, onError);
     return ret.promise();
 

@@ -3,237 +3,9 @@
   <head>
     <meta http-equiv='X-UA-Compatible' content='IE=edge' />
     <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
-    <title>Nick's Example-SMART-App</title>
+    <title>Example-SMART-App</title>
 
     <link rel='stylesheet' type='text/css' href='./src/css/example-smart-app.css'>
-    
-    <!-- Professional Clinical Styling -->
-    <style>
-      /* Professional EHR-style Layout */
-      * {
-        box-sizing: border-box;
-      }
-      
-      body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        line-height: 1.4;
-        color: #2d3436;
-        background-color: #f8f9fa;
-        margin: 0;
-        padding: 0;
-      }
-      
-      #holder {
-        max-width: 1400px;
-        margin: 0 auto;
-        background: #ffffff;
-        border: 1px solid #dee2e6;
-        min-height: 100vh;
-      }
-      
-      /* Clinical Header */
-      #holder > h2:first-child {
-        background: #2c3e50;
-        color: #ffffff;
-        margin: 0;
-        padding: 16px 24px;
-        font-size: 1.1rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 2px solid #34495e;
-      }
-      
-      /* Section Headers - Clinical Style */
-      #holder h2:not(:first-child) {
-        background: #ecf0f1;
-        color: #2c3e50;
-        margin: 0;
-        padding: 12px 24px;
-        border-bottom: 1px solid #bdc3c7;
-        font-size: 0.95rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-      }
-      
-      /* Clean Table Design */
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 0;
-        background: #ffffff;
-        font-size: 14px;
-      }
-      
-      th {
-        background: #f1f2f6;
-        color: #2c3e50;
-        padding: 12px 24px;
-        text-align: left;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 12px;
-        letter-spacing: 0.5px;
-        border-bottom: 1px solid #ddd;
-        width: 200px;
-      }
-      
-      td {
-        padding: 12px 24px;
-        color: #2c3e50;
-        background: #ffffff;
-        border-bottom: 1px solid #f1f2f6;
-        font-weight: 500;
-      }
-      
-      tr:nth-child(even) {
-        background: #fafbfc;
-      }
-      
-      tr:hover {
-        background: #f8f9fa;
-      }
-      
-      /* Professional Loading */
-      #loading {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.95);
-        z-index: 1000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-      }
-      
-      .spinner {
-        display: flex;
-        gap: 4px;
-        margin-bottom: 16px;
-      }
-      
-      .spinner > div {
-        width: 12px;
-        height: 12px;
-        background-color: #2c3e50;
-        border-radius: 2px;
-        animation: clinical-loading 1.2s infinite ease-in-out both;
-      }
-      
-      .spinner .bounce1 { animation-delay: -0.24s; }
-      .spinner .bounce2 { animation-delay: -0.12s; }
-      .spinner .bounce3 { animation-delay: 0s; }
-      
-      @keyframes clinical-loading {
-        0%, 80%, 100% { 
-          transform: scaleY(0.4);
-        } 40% { 
-          transform: scaleY(1.0);
-        }
-      }
-      
-      #loading:after {
-        content: 'Loading Patient Record...';
-        color: #636e72;
-        font-size: 14px;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-      
-      /* Error Styling - Clinical */
-      #errors {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 16px 24px;
-        background: #fff5f5;
-        border-left: 4px solid #e74c3c;
-        color: #2c3e50;
-        font-size: 14px;
-      }
-      
-      /* Clinical Values Styling */
-      td {
-        font-family: 'Courier New', monospace;
-      }
-      
-      th {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      }
-      
-      /* Vital Signs Emphasis */
-      td#systolicbp, td#diastolicbp {
-        font-weight: 700;
-        color: #2c3e50;
-      }
-      
-      td#hdl, td#ldl {
-        font-weight: 700;
-        color: #2c3e50;
-      }
-      
-      /* Data Status Indicators */
-      td:empty:before {
-        content: "-- Not Available --";
-        color: #95a5a6;
-        font-style: italic;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      }
-      
-      /* Responsive Professional Layout */
-      @media (max-width: 768px) {
-        body { 
-          font-size: 13px; 
-        }
-        
-        th, td {
-          padding: 10px 16px;
-          font-size: 13px;
-        }
-        
-        th {
-          width: 140px;
-        }
-        
-        #holder > h2:first-child {
-          padding: 14px 16px;
-          font-size: 1rem;
-        }
-        
-        #holder h2:not(:first-child) {
-          padding: 10px 16px;
-          font-size: 0.85rem;
-        }
-      }
-      
-      /* Clean Professional Borders */
-      #holder {
-        box-shadow: none;
-        border-radius: 0;
-      }
-      
-      table {
-        border: none;
-      }
-      
-      /* Remove all animations and transitions */
-      *, *:before, *:after {
-        transition: none !important;
-        animation: none !important;
-      }
-      
-      #loading {
-        animation: none;
-      }
-      
-      .spinner > div {
-        animation: clinical-loading 1.2s infinite ease-in-out both;
-      }
-    </style>
     <!--
       Temporarily disable cerner-smart-embeddable-lib
       <link rel='stylesheet' type='text/css' href='./lib/css/cerner-smart-embeddable-lib-1.0.0.min.css'>
@@ -294,14 +66,6 @@
         </tr>
       </table>
     </div>
-
-    <!-- Superblocks Clinical Dashboard Section -->
-    <div id='superblocks-section' style="display: none;">
-      <h2>Clinical Analytics Dashboard</h2>
-      <div id="superblocks-container" style="background: #ffffff; min-height: 500px; border-top: 1px solid #dee2e6;">
-        <!-- Superblocks app will load here -->
-      </div>
-    </div>
     <!-- Required JS files to enable this page to embed within an MPage -->
     <!--
       Temporarily disable cerner-smart-embeddable-lib
@@ -318,10 +82,6 @@
     <!-- Prevent session bleed caused by single threaded embedded browser and sessionStorage API -->
     <!-- https://github.com/cerner/fhir-client-cerner-additions -->
     <script src='./lib/js/fhir-client-cerner-additions-1.0.0.js'></script>
-    
-    <!-- Superblocks Embedded SDK (Official) -->
-    <script src="https://prod-cdn.superblocks.com/packages/@superblocksteam/embed@latest/embed.bundle.js"></script>
-    
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <script>
       extractData().then(
@@ -337,5 +97,5 @@
         }
       );
     </script>
-      </body>
-  </html>
+  </body>
+</html>
